@@ -41,13 +41,22 @@ dependencies:
   timeago: ^3.6.1
   uuid: ^4.5.1
   intl: ^0.19.0
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/cb47c89e-6848-4251-8af8-8033b6accdf6.jpg"
+  adaptive_icon_background: "#0C0A1D"
+  adaptive_icon_foreground: "assets/images/cb47c89e-6848-4251-8af8-8033b6accdf6.jpg"
 
 flutter:
   uses-material-design: true
-#  assets:
-#    - assets/images/
+  assets:
+    - assets/images/

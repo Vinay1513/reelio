@@ -4,29 +4,60 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   AppTheme._();
 
-  // Midnight + Electric Blue Palette
-  static const Color primaryColor = Color(0xFF3B82F6);
-  static const Color secondaryColor = Color(0xFF6366F1);
-  static const Color backgroundColor = Color(0xFF0F172A);
-  static const Color surfaceColor = Color(0xFF1E293B);
-  static const Color cardColor = Color(0xFF334155);
-  static const Color textPrimary = Color(0xFFF8FAFC);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color errorColor = Color(0xFFEF4444);
-  static const Color successColor = Color(0xFF22C55E);
-  static const Color dividerColor = Color(0xFF475569);
-  static const Color heartLiked = Color(0xFFEF4444);
+  // Purple + Pink Gradient Palette
+  static const Color primaryColor = Color(0xFF8B5CF6);
+  static const Color secondaryColor = Color(0xFFEC4899);
+  static const Color accentColor = Color(0xFF60A5FA);
+  static const Color backgroundColor = Color(0xFF0C0A1D);
+  static const Color surfaceColor = Color(0xFF1A1625);
+  static const Color cardColor = Color(0xFF251F35);
+  static const Color textPrimary = Color(0xFFF5F3FF);
+  static const Color textSecondary = Color(0xFFA5A3B8);
+  static const Color errorColor = Color(0xFFF472B6);
+  static const Color successColor = Color(0xFF34D399);
+  static const Color dividerColor = Color(0xFF3D3654);
+  static const Color heartLiked = Color(0xFFEC4899);
   static const Color heartUnliked = textPrimary;
+
+  // Full gradient colors for premium look
+  static const Color gradientStart = Color(0xFF8B5CF6);
+  static const Color gradientEnd = Color(0xFFEC4899);
+
+  // Premium Gradient Button
+  static BoxDecoration get gradientButtonDecoration => BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: primaryGradient,
+        boxShadow: [
+          BoxShadow(
+            color: gradientStart.withValues(alpha: 0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      );
+
+  // Card with gradient border
+  static BoxDecoration gradientCardDecoration(Color innerColor) => BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: primaryGradient,
+        color: innerColor,
+      );
 
   // Gradients
   static LinearGradient get primaryGradient => const LinearGradient(
-        colors: [primaryColor, secondaryColor],
+        colors: [gradientStart, gradientEnd],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       );
 
+  static LinearGradient get appBarGradient => const LinearGradient(
+        colors: [Color(0xFF1A1625), Color(0xFF0C0A1D)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      );
+
   static LinearGradient get videoOverlayGradient => const LinearGradient(
-        colors: [Colors.transparent, Color(0xCC0F172A)],
+        colors: [Colors.transparent, Color(0xCC0C0A1D)],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         stops: [0.5, 1.0],
@@ -159,12 +190,9 @@ class AppTheme {
         margin: EdgeInsets.zero,
       ),
 
-      // Elevated Button Theme
+      // Elevated Button Theme (Gradient Premium Style)
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryColor,
-          foregroundColor: textPrimary,
-          elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -391,7 +419,7 @@ class AppTheme {
           fontWeight: FontWeight.w500,
         ),
         indicator: const UnderlineTabIndicator(
-          borderSide: BorderSide(color: primaryColor, width: 2),
+          borderSide: BorderSide(color: gradientEnd, width: 2),
         ),
       ),
     );
