@@ -34,7 +34,16 @@ class LikeBloc extends Bloc<LikeEvent, LikeState> {
   }
 
   Future<void> _onToggle(ToggleLike event, Emitter<LikeState> emit) async {
-    emit(state.copyWith(isLoading: true, errorMessage: null));
+    final wasLiked = state.isLiked;
+    final previousCount = state.likeCount;
+    
+    emit(state.copyWith(
+      isLiked: !wasLiked,
+      likeCount: wasLiked ? previousCount - 1 : previousCount + 1,
+      isLoading: true, 
+      errorMessage: null,
+    ));
+    
     try {
       final isLiked = await _supabaseService.toggleLike(event.videoId);
       emit(state.copyWith(
@@ -44,10 +53,11 @@ class LikeBloc extends Bloc<LikeEvent, LikeState> {
             const Duration(milliseconds: 800), () => add(const HideHeartAnimation()));
       }
     } catch (e) {
-      final msg = e.toString();
       emit(state.copyWith(
+        isLiked: wasLiked,
+        likeCount: previousCount,
         isLoading: false,
-        errorMessage: msg.contains('authenticated') ? 'Sign in to like videos' : null,
+        errorMessage: e.toString().contains('authenticated') ? 'Sign in to like videos' : null,
       ));
     }
   }

@@ -95,12 +95,26 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
   }
 
   Future<void> _onAdd(AddComment event, Emitter<CommentState> emit) async {
-    emit(state.copyWith(isSending: true));
+    final currentUser = await _service.getCurrentProfile();
+    final tempComment = CommentModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      videoId: event.videoId,
+      userId: _service.currentUserId ?? '',
+      comment: event.comment,
+      createdAt: DateTime.now(),
+      username: currentUser?.username ?? 'You',
+      avatarUrl: currentUser?.avatarUrl,
+    );
+
+    final updatedComments = [tempComment, ...state.comments];
+    emit(state.copyWith(comments: updatedComments, isSending: true));
+
     try {
       await _service.addComment(event.videoId, event.comment);
       emit(state.copyWith(isSending: false));
     } catch (e) {
-      emit(state.copyWith(isSending: false, error: e.toString()));
+      final revertedComments = state.comments.where((c) => c.id != tempComment.id).toList();
+      emit(state.copyWith(comments: revertedComments, isSending: false, error: e.toString()));
     }
   }
 

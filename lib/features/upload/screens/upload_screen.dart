@@ -346,8 +346,11 @@ class _UploadScreenState extends State<UploadScreen> {
                 fontSize: 18,
                 fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        const Text('MP4 or MOV · Up to 3 minutes',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: const Text('MP4 or MOV · Up to 3 minutes',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+        ),
       ],
     );
   }

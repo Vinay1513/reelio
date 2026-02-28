@@ -14,6 +14,11 @@ class ActionButtons extends StatefulWidget {
   final VoidCallback onCommentTap;
   final VoidCallback onDownloadTap;
   final VoidCallback onShareTap;
+  final int initialCommentCount;
+  final VoidCallback? onCommentSheetOpened;
+  final VoidCallback? onFollowTap;
+  final VoidCallback? onProfileTap;
+  final bool isFollowing;
 
   const ActionButtons({
     super.key,
@@ -23,6 +28,11 @@ class ActionButtons extends StatefulWidget {
     required this.onCommentTap,
     required this.onDownloadTap,
     required this.onShareTap,
+    this.initialCommentCount = 0,
+    this.onCommentSheetOpened,
+    this.onFollowTap,
+    this.onProfileTap,
+    this.isFollowing = false,
   });
 
   @override
@@ -31,12 +41,46 @@ class ActionButtons extends StatefulWidget {
 
 class _ActionButtonsState extends State<ActionButtons> {
   late Stream<int> _commentCountStream;
+  late int _localCommentCount;
+  bool _didOpenCommentSheet = false;
+  bool _isFollowing = false;
+  final SupabaseService _service = SupabaseService();
 
   @override
   void initState() {
     super.initState();
+    _localCommentCount = widget.initialCommentCount;
+    _isFollowing = widget.isFollowing;
     _commentCountStream =
         SupabaseService().watchCommentCount(widget.video.id);
+    _checkFollowStatus();
+  }
+
+  Future<void> _checkFollowStatus() async {
+    print('ActionButtons - checking follow status for: ${widget.video.userId}');
+    final isFollowing = await _service.isFollowing(widget.video.userId);
+    print('ActionButtons - isFollowing: $isFollowing');
+    if (mounted) {
+      setState(() => _isFollowing = isFollowing);
+    }
+  }
+
+  Future<void> _handleFollowTap() async {
+    print('ActionButtons - _handleFollowTap called for: ${widget.video.userId}');
+    final wasFollowing = _isFollowing;
+    setState(() {
+      _isFollowing = !_isFollowing;
+    });
+    try {
+      await _service.toggleFollow(widget.video.userId);
+      print('ActionButtons - toggleFollow success for: ${widget.video.userId}');
+      widget.onFollowTap?.call();
+    } catch (e) {
+      print('ActionButtons - toggleFollow error: $e');
+      setState(() {
+        _isFollowing = wasFollowing;
+      });
+    }
   }
 
   @override
@@ -67,6 +111,8 @@ class _ActionButtonsState extends State<ActionButtons> {
             _buildCommentButton(),
             _buildCommentCount(),
             const SizedBox(height: 18),
+            _buildFollowButton(),
+            const SizedBox(height: 18),
             _buildIconButton(
               icon: Icons.download_rounded,
               onTap: widget.onDownloadTap,
@@ -84,40 +130,25 @@ class _ActionButtonsState extends State<ActionButtons> {
   }
 
   Widget _buildAvatar() {
-    return Stack(
-      alignment: Alignment.bottomCenter,
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2),
-          ),
-          child: ClipOval(
-            child: widget.avatarUrl.isNotEmpty
-                ? Image.network(
-                    widget.avatarUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _defaultAvatar(),
-                  )
-                : _defaultAvatar(),
-          ),
+    return GestureDetector(
+      onTap: widget.onProfileTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2),
         ),
-        Positioned(
-          bottom: -8,
-          child: Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.add, color: Colors.white, size: 14),
-          ),
+        child: ClipOval(
+          child: widget.avatarUrl.isNotEmpty
+              ? Image.network(
+                  widget.avatarUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _defaultAvatar(),
+                )
+              : _defaultAvatar(),
         ),
-      ],
+      ),
     );
   }
 
@@ -146,11 +177,43 @@ class _ActionButtonsState extends State<ActionButtons> {
 
   Widget _buildCommentButton() {
     return GestureDetector(
-      onTap: widget.onCommentTap,
+      onTap: () {
+        widget.onCommentTap();
+        setState(() {
+          _didOpenCommentSheet = true;
+          _localCommentCount++;
+        });
+        widget.onCommentSheetOpened?.call();
+      },
       child: const Icon(
         Icons.chat_bubble_rounded,
         color: Colors.white,
         size: 34,
+      ),
+    );
+  }
+
+  Widget _buildFollowButton() {
+    return GestureDetector(
+      onTap: _handleFollowTap,
+      child: Column(
+        children: [
+          Icon(
+            _isFollowing ? Icons.person_remove : Icons.person_add,
+            color: _isFollowing ? AppTheme.primaryColor : Colors.white,
+            size: 30,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _isFollowing ? 'Following' : 'Follow',
+            style: TextStyle(
+              color: _isFollowing ? AppTheme.primaryColor : Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              shadows: const [Shadow(color: Colors.black45, blurRadius: 4)],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -181,7 +244,15 @@ class _ActionButtonsState extends State<ActionButtons> {
     return StreamBuilder<int>(
       stream: _commentCountStream,
       builder: (context, snapshot) {
-        return _buildLabel(_formatCount(snapshot.data ?? 0));
+        int baseCount = snapshot.hasData ? snapshot.data! : _localCommentCount;
+        
+        if (_didOpenCommentSheet && snapshot.hasData) {
+          _localCommentCount = snapshot.data!;
+          _didOpenCommentSheet = false;
+        }
+        
+        final displayCount = _didOpenCommentSheet ? baseCount + 1 : baseCount;
+        return _buildLabel(_formatCount(displayCount));
       },
     );
   }

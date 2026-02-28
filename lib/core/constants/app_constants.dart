@@ -15,6 +15,8 @@ class AppConstants {
   static const String commentsTable = 'comments';
   static const String profilesTable = 'profiles';
   static const String followsTable = 'follows';
+  static const String followRequestsTable = 'follow_requests';
+  static const String notificationsTable = 'notifications';
 
   // Storage
   static const String videoBucket = 'videos';

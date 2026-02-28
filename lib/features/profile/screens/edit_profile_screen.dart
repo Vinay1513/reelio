@@ -184,12 +184,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _isSaving = true);
 
     try {
-      await _service.updateProfile(
+      print('Save profile - userId from auth: ${_service.currentUserId}');
+      final result = await _service.updateProfile(
         displayName: name,
         username: username,
         bio: bio,
         avatarFile: _newAvatarFile,
       );
+
+      print('Save profile - result: $result');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

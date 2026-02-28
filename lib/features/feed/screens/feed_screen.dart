@@ -10,6 +10,7 @@ import '../bloc/like_bloc.dart';
 import '../bloc/like_event.dart';
 import '../widgets/comment_sheet.dart';
 import '../widgets/video_item.dart';
+import '../../profile/screens/profile_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   final bool isVisible;
@@ -20,24 +21,52 @@ class FeedScreen extends StatefulWidget {
   State<FeedScreen> createState() => _FeedScreenState();
 }
 
-class _FeedScreenState extends State<FeedScreen> {
+class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   late PageController _pageController;
   final SupabaseService _service = SupabaseService();
+  final Map<String, int> _commentCounts = {};
+  bool _isScreenActive = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _pageController = PageController();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     super.dispose();
   }
 
-  void _showComments(BuildContext context, String videoId) {
-    showModalBottomSheet(
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      setState(() => _isScreenActive = false);
+    } else if (state == AppLifecycleState.resumed) {
+      setState(() => _isScreenActive = true);
+    }
+  }
+
+  int _getCommentCount(String videoId, int defaultCount) {
+    return _commentCounts[videoId] ?? defaultCount;
+  }
+
+  void _navigateToProfile(BuildContext context, String userId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProfileScreen(userId: userId),
+      ),
+    );
+  }
+
+  Future<void> _showComments(BuildContext context, String videoId, int defaultCount) async {
+    _commentCounts[videoId] = defaultCount;
+    
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -47,6 +76,12 @@ class _FeedScreenState extends State<FeedScreen> {
         child: CommentSheet(videoId: videoId),
       ),
     );
+    
+    if (mounted) {
+      final newCount = await _service.watchCommentCount(videoId).first;
+      _commentCounts[videoId] = newCount;
+      setState(() {});
+    }
   }
 
   @override
@@ -83,16 +118,18 @@ class _FeedScreenState extends State<FeedScreen> {
               itemBuilder: (context, index) {
                 final video = state.videos[index];
                 final isVisible =
-                    index == state.currentIndex && widget.isVisible;
+                    index == state.currentIndex && widget.isVisible && _isScreenActive;
+                final commentCount = _getCommentCount(video.id, video.commentCount);
 
                 return BlocProvider(
                   create: (_) =>
                       LikeBloc(supabaseService: _service)
                         ..add(InitializeLike(video.id)),
                   child: VideoItem(
-                    video: video,
+                    video: video.copyWith(commentCount: commentCount),
                     isVisible: isVisible,
-                    onCommentTap: () => _showComments(context, video.id),
+                    onCommentTap: () => _showComments(context, video.id, video.commentCount),
+                    onProfileTap: () => _navigateToProfile(context, video.userId),
                   ),
                 );
               },

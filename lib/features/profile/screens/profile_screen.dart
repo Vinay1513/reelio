@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'edit_profile_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'reel_screen.dart';
+import 'notifications_screen.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/video_model.dart';
 import '../../../data/services/supabase_service.dart';
@@ -21,6 +22,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<VideoModel> _videos = [];
   bool _isLoading = true;
   bool _isFollowLoading = false;
+  bool _hasPendingRequest = false;
+  bool _isCurrentlyFollowing = false;
   int _totalLikes = 0;
 
   String get _targetUserId => widget.userId ?? _getCurrentUserId();
@@ -53,6 +56,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       UserProfile? profile = await _service.getProfile(_targetUserId);
       print('LOAD_PROFILE - profile: $profile');
+      print('LOAD_PROFILE - followersCount: ${profile?.followersCount}');
+      print('LOAD_PROFILE - followingCount: ${profile?.followingCount}');
       print('LOAD_PROFILE - profile username: ${profile?.username}');
       print('LOAD_PROFILE - profile displayName: ${profile?.displayName}');
       
@@ -64,11 +69,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       
       final videos = await _service.getUserVideos(_targetUserId);
       final likes = await _service.getTotalLikesForUser(_targetUserId);
+      
+      bool hasPending = false;
+      bool isFollowing = false;
+      if (!_isOwnProfile) {
+        hasPending = await _service.hasPendingFollowRequest(_targetUserId);
+        isFollowing = await _service.isFollowing(_targetUserId);
+        print('LOAD_PROFILE - isFollowing: $isFollowing');
+        print('LOAD_PROFILE - hasPending: $hasPending');
+      }
+      
       if (mounted) {
         setState(() {
           _profile = profile;
           _videos = videos;
           _totalLikes = likes;
+          _hasPendingRequest = hasPending;
+          _isCurrentlyFollowing = isFollowing;
           _isLoading = false;
         });
       }
@@ -80,11 +97,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _toggleFollow() async {
     if (_profile == null) return;
-    setState(() => _isFollowLoading = true);
+    final wasFollowing = _isCurrentlyFollowing;
+    setState(() {
+      _isFollowLoading = true;
+      _isCurrentlyFollowing = !_isCurrentlyFollowing;
+    });
     try {
       final isNowFollowing = await _service.toggleFollow(_targetUserId);
       if (mounted) {
         setState(() {
+          _isCurrentlyFollowing = isNowFollowing;
           _profile = _profile!.copyWith(
             isFollowing: isNowFollowing,
             followersCount: isNowFollowing
@@ -95,7 +117,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isFollowLoading = false);
+      if (mounted) {
+        setState(() {
+          _isCurrentlyFollowing = wasFollowing;
+          _isFollowLoading = false;
+        });
+      }
     }
   }
 
@@ -153,11 +180,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       actions: [
-        if (_isOwnProfile)
+        if (_isOwnProfile) ...[
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded, color: AppTheme.textSecondary),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppTheme.textSecondary),
             onPressed: () => _showSignOutDialog(),
           ),
+        ],
       ],
     );
   }
@@ -327,7 +364,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: ElevatedButton(
                 onPressed: _isFollowLoading ? null : _toggleFollow,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _profile?.isFollowing == true
+                  backgroundColor: _isCurrentlyFollowing || _hasPendingRequest
                       ? AppTheme.surfaceColor
                       : AppTheme.primaryColor,
                   padding: const EdgeInsets.symmetric(vertical: 12),
@@ -342,9 +379,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       strokeWidth: 2, color: Colors.white),
                 )
                     : Text(
-                  _profile?.isFollowing == true
+                  _isCurrentlyFollowing
                       ? 'Following'
-                      : 'Follow',
+                      : _hasPendingRequest
+                          ? 'Requested'
+                          : 'Follow',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
@@ -428,7 +467,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildVideoThumbnail(VideoModel video) {
     return GestureDetector(
       onTap: () {
-        // Navigate to video player
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ReelScreen(
+              videos: _videos,
+              initialIndex: _videos.indexOf(video),
+            ),
+          ),
+        );
       },
       child: Container(
         color: AppTheme.surfaceColor,

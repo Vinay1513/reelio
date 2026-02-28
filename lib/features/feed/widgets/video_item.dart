@@ -11,7 +11,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/video_model.dart';
 import '../bloc/like_bloc.dart';
 import '../bloc/like_event.dart';
-import '../bloc/like_state.dart';
 import 'action_buttons.dart';
 import 'animated_heart.dart';
 
@@ -19,12 +18,14 @@ class VideoItem extends StatefulWidget {
   final VideoModel video;
   final bool isVisible;
   final VoidCallback onCommentTap;
+  final VoidCallback? onProfileTap;
 
   const VideoItem({
     super.key,
     required this.video,
     required this.isVisible,
     required this.onCommentTap,
+    this.onProfileTap,
   });
 
   @override
@@ -282,12 +283,15 @@ class _VideoItemState extends State<VideoItem> with SingleTickerProviderStateMix
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            profile['username']!,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+          GestureDetector(
+            onTap: widget.onProfileTap,
+            child: Text(
+              profile['username']!,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
           ),
           if (widget.video.caption != null && widget.video.caption!.isNotEmpty)
@@ -301,7 +305,6 @@ class _VideoItemState extends State<VideoItem> with SingleTickerProviderStateMix
               ),
             ],
           const SizedBox(height: 12),
-          // Music ticker
           Row(
             children: [
               const Icon(Icons.music_note_rounded,
@@ -353,6 +356,9 @@ class _VideoItemState extends State<VideoItem> with SingleTickerProviderStateMix
         onCommentTap: widget.onCommentTap,
         onDownloadTap: _downloadVideo,
         onShareTap: _shareVideo,
+        initialCommentCount: widget.video.commentCount,
+        onCommentSheetOpened: () {},
+        onProfileTap: widget.onProfileTap,
       ),
     );
   }
